@@ -7,8 +7,12 @@ import pydasm
 import os
 import sys
 
-def eprint(msg):
+def eprint( sqlc, peid, msg):
 	print "\t [!]%s" % msg
+	try:
+		sqlc.execute("INSERT INTO errors (peid, error) VALUES (?,?)"(peid,msg))
+	except:
+		print "\t [!]FAILED INSERT INTO errors"
 
 def convert_char(char):
 	if char in string.ascii_letters or char in string.digits or char in string.punctuation or char in string.whitespace:
@@ -19,15 +23,23 @@ def convert_char(char):
 def convert_to_printable(s):
 	return ''.join([convert_char(c) for c in s])
 
-# c.execute('''CREATE TABLE IF NOT EXISTS NAME
+# sqlc.execute('''CREATE TABLE IF NOT EXISTS NAME
 # (
 # 	ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 # 	peid INTEGER,
 # )
 # ''')
-def CreateDB(c):
+def CreateDB(sqlc):
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS peInfo
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS errors
+	(
+		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
+		peid INTEGER,
+		error text
+	)
+	''')
+	
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS peInfo
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		pepath text,
@@ -35,7 +47,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS strings
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS strings
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -44,7 +56,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS IMAGE_DOS_HEADER
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS IMAGE_DOS_HEADER
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -70,7 +82,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS IMAGE_DOS_HEADER_RAW
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS IMAGE_DOS_HEADER_RAW
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -78,7 +90,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS IMAGE_NT_HEADERS
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS IMAGE_NT_HEADERS
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -86,7 +98,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS IMAGE_FILE_HEADER
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS IMAGE_FILE_HEADER
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -100,7 +112,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS IMAGE_OPTIONAL_HEADER
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS IMAGE_OPTIONAL_HEADER
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -138,7 +150,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS IMAGE_SECTION_HEADER
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS IMAGE_SECTION_HEADER
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -159,7 +171,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS IMAGE_DIRECTORY
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS IMAGE_DIRECTORY
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -169,7 +181,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS DIRECTORY_ENTRY_IMPORT
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS DIRECTORY_ENTRY_IMPORT
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -179,7 +191,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS DIRECTORY_ENTRY_IMPORT_HASH
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS DIRECTORY_ENTRY_IMPORT_HASH
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -187,7 +199,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS DIRECTORY_ENTRY_EXPORT
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS DIRECTORY_ENTRY_EXPORT
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -196,7 +208,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS resource_strings
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS resource_strings
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -204,7 +216,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS FileInfo
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS FileInfo
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -213,7 +225,7 @@ def CreateDB(c):
 	)
 	''')
 	
-	c.execute('''CREATE TABLE IF NOT EXISTS EP_DIS
+	sqlc.execute('''CREATE TABLE IF NOT EXISTS EP_DIS
 	(
 		ID INTEGER PRIMARY KEY   AUTOINCREMENT,
 		peid INTEGER,
@@ -222,13 +234,13 @@ def CreateDB(c):
 	)
 	''')
 
-def InitBinary(c, path, md5):
-	c.execute("Insert into peInfo (pepath, md5) VALUES (?,?);", (path,md5))
-	c.execute("SELECT last_insert_rowid();")
-	val = c.fetchone()[0]
+def InitBinary(sqlc, path, md5):
+	sqlc.execute("Insert into peInfo (pepath, md5) VALUES (?,?);", (path,md5))
+	sqlc.execute("SELECT last_insert_rowid();")
+	val = sqlc.fetchone()[0]
 	return val;
 
-def strings(peid, c, filename, min=4):
+def strings(peid, sqlc, filename, min=4):
 	
 	resVal = ()
 	resList = []
@@ -245,19 +257,19 @@ def strings(peid, c, filename, min=4):
 				resList.append(resVal)
 			result = ""
 	
-	c.executemany("INSERT INTO strings (peid,string,sin) VALUES (?,?,?);", resList )
+	sqlc.executemany("INSERT INTO strings (peid,string,sin) VALUES (?,?,?);", resList )
 	
 	return resList
 
 def matchBytes():
 	return 0
 
-def ParsePE(c, peid, file):
+def ParsePE(sqlc, peid, file):
 	
 	pe = pefile.PE(file)
 	
 	try:
-		c.execute("INSERT into IMAGE_DOS_HEADER (peid,e_magic,e_cblp,e_cp,e_crlc,e_cparhdr,e_minalloc,e_maxalloc,e_ss,e_sp,e_csum,e_ip,e_cs,e_lfarlc,e_ovno,e_res,e_oemid,e_oeminfo,e_res2,e_lfanew) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+		sqlc.execute("INSERT into IMAGE_DOS_HEADER (peid,e_magic,e_cblp,e_cp,e_crlc,e_cparhdr,e_minalloc,e_maxalloc,e_ss,e_sp,e_csum,e_ip,e_cs,e_lfarlc,e_ovno,e_res,e_oemid,e_oeminfo,e_res2,e_lfanew) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 			(
 			peid,
 			"0x%04x"%pe.DOS_HEADER.e_magic,
@@ -282,15 +294,15 @@ def ParsePE(c, peid, file):
 			)
 		)
 	except:
-		eprint("FAILED IMAGE_DOS_HEADER")
+		eprint( sqlc, peid, "FAILED IMAGE_DOS_HEADER")
 	
 	try:
-		c.execute("INSERT INTO IMAGE_NT_HEADERS (peid,Signature) VALUES (?,?)", (peid,"0x%08x"%pe.NT_HEADERS.Signature,))
+		sqlc.execute("INSERT INTO IMAGE_NT_HEADERS (peid,Signature) VALUES (?,?)", (peid,"0x%08x"%pe.NT_HEADERS.Signature,))
 	except:
-		eprint("Failed IMAGE_NT_HEADERS")
+		eprint( sqlc, peid, "Failed IMAGE_NT_HEADERS")
 	
 	try:
-		c.execute('INSERT INTO IMAGE_FILE_HEADER (peid,Machine,NumberOfSections,TimeDateStamp,PointerToSymbolTable,NumberOfSymbols,SizeOfOptionalHeader,Characteristics) VALUES (?,?,?,?,?,?,?,?)',
+		sqlc.execute('INSERT INTO IMAGE_FILE_HEADER (peid,Machine,NumberOfSections,TimeDateStamp,PointerToSymbolTable,NumberOfSymbols,SizeOfOptionalHeader,Characteristics) VALUES (?,?,?,?,?,?,?,?)',
 			(
 			peid,
 			"0x%04x"%pe.FILE_HEADER.Machine,
@@ -303,11 +315,11 @@ def ParsePE(c, peid, file):
 			)
 		)
 	except:
-		eprint( "Failed IMAGE_FILE_HEADER")
+		eprint( sqlc, peid,  "Failed IMAGE_FILE_HEADER")
 	
 	try:
 		if pe.OPTIONAL_HEADER.name is "IMAGE_OPTIONAL_HEADER64":
-			c.execute('INSERT INTO IMAGE_OPTIONAL_HEADER (peid,type,Magic,MajorLinkerVersion,MinorLinkerVersion,SizeOfCode,SizeOfInitializedData,SizeOfUninitializedData,AddressOfEntryPoint,BaseOfCode,BaseOfData,ImageBase,SectionAlignment,FileAlignment,MajorOperatingSystemVersion,MinorOperatingSystemVersion,MajorImageVersion,MinorImageVersion,MajorSubsystemVersion,MinorSubsystemVersion,Reserved1,SizeOfImage,SizeOfHeaders,CheckSum,Subsystem,DllCharacteristics,SizeOfStackReserve,SizeOfStackCommit,SizeOfHeapReserve,SizeOfHeapCommit,LoaderFlags,NumberOfRvaAndSizes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+			sqlc.execute('INSERT INTO IMAGE_OPTIONAL_HEADER (peid,type,Magic,MajorLinkerVersion,MinorLinkerVersion,SizeOfCode,SizeOfInitializedData,SizeOfUninitializedData,AddressOfEntryPoint,BaseOfCode,BaseOfData,ImageBase,SectionAlignment,FileAlignment,MajorOperatingSystemVersion,MinorOperatingSystemVersion,MajorImageVersion,MinorImageVersion,MajorSubsystemVersion,MinorSubsystemVersion,Reserved1,SizeOfImage,SizeOfHeaders,CheckSum,Subsystem,DllCharacteristics,SizeOfStackReserve,SizeOfStackCommit,SizeOfHeapReserve,SizeOfHeapCommit,LoaderFlags,NumberOfRvaAndSizes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
 				(
 				peid,
 				64,
@@ -344,7 +356,7 @@ def ParsePE(c, peid, file):
 				)
 			)
 		else:
-			c.execute('INSERT INTO IMAGE_OPTIONAL_HEADER (peid,type,Magic,MajorLinkerVersion,MinorLinkerVersion,SizeOfCode,SizeOfInitializedData,SizeOfUninitializedData,AddressOfEntryPoint,BaseOfCode,BaseOfData,ImageBase,SectionAlignment,FileAlignment,MajorOperatingSystemVersion,MinorOperatingSystemVersion,MajorImageVersion,MinorImageVersion,MajorSubsystemVersion,MinorSubsystemVersion,Reserved1,SizeOfImage,SizeOfHeaders,CheckSum,Subsystem,DllCharacteristics,SizeOfStackReserve,SizeOfStackCommit,SizeOfHeapReserve,SizeOfHeapCommit,LoaderFlags,NumberOfRvaAndSizes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+			sqlc.execute('INSERT INTO IMAGE_OPTIONAL_HEADER (peid,type,Magic,MajorLinkerVersion,MinorLinkerVersion,SizeOfCode,SizeOfInitializedData,SizeOfUninitializedData,AddressOfEntryPoint,BaseOfCode,BaseOfData,ImageBase,SectionAlignment,FileAlignment,MajorOperatingSystemVersion,MinorOperatingSystemVersion,MajorImageVersion,MinorImageVersion,MajorSubsystemVersion,MinorSubsystemVersion,Reserved1,SizeOfImage,SizeOfHeaders,CheckSum,Subsystem,DllCharacteristics,SizeOfStackReserve,SizeOfStackCommit,SizeOfHeapReserve,SizeOfHeapCommit,LoaderFlags,NumberOfRvaAndSizes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
 				(
 				peid,
 				32,
@@ -381,13 +393,13 @@ def ParsePE(c, peid, file):
 				)
 			)
 	except:
-		eprint( "Failed IMAGE_OPTIONAL_HEADER")
+		eprint( sqlc, peid,  "Failed IMAGE_OPTIONAL_HEADER")
 	
 	try:
 		for section in pe.sections:
 			entropy = section.get_entropy()
 			md5 = section.get_hash_md5()
-			c.execute('INSERT INTO IMAGE_SECTION_HEADER (peid,Name,Misc,Misc_PhysicalAddress,Misc_VirtualSize,VirtualAddress,SizeOfRawData,PointerToRawData,PointerToRelocations,PointerToLinenumbers,NumberOfRelocations,NumberOfLinenumbers,Characteristics,Entropy,MD5) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+			sqlc.execute('INSERT INTO IMAGE_SECTION_HEADER (peid,Name,Misc,Misc_PhysicalAddress,Misc_VirtualSize,VirtualAddress,SizeOfRawData,PointerToRawData,PointerToRelocations,PointerToLinenumbers,NumberOfRelocations,NumberOfLinenumbers,Characteristics,Entropy,MD5) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
 				(
 				peid,
 				section.Name,
@@ -407,11 +419,11 @@ def ParsePE(c, peid, file):
 				)
 			)
 	except:
-		eprint( "Failed IMAGE_SECTION_HEADER")
+		eprint( sqlc, peid,  "Failed IMAGE_SECTION_HEADER")
 	
 	try:
 		for data_dir in pe.OPTIONAL_HEADER.DATA_DIRECTORY:
-			c.execute('INSERT INTO IMAGE_DIRECTORY (peid,name,VirtualAddress,Size) VALUES (?,?,?,?)',
+			sqlc.execute('INSERT INTO IMAGE_DIRECTORY (peid,name,VirtualAddress,Size) VALUES (?,?,?,?)',
 				(
 					peid,
 					data_dir.name,
@@ -420,13 +432,13 @@ def ParsePE(c, peid, file):
 				)
 			)
 	except:
-		eprint( "Failed IMAGE_DIRECTORY")
+		eprint( sqlc, peid,  "Failed IMAGE_DIRECTORY")
 	
 	try:
 		for entry in pe.DIRECTORY_ENTRY_IMPORT:
 			dll_name = entry.dll
 			for func in entry.imports:
-				c.execute('INSERT INTO DIRECTORY_ENTRY_IMPORT (peid,dll,func,addr) VALUES (?,?,?,?)',
+				sqlc.execute('INSERT INTO DIRECTORY_ENTRY_IMPORT (peid,dll,func,addr) VALUES (?,?,?,?)',
 					(
 						peid,
 						dll_name,
@@ -435,33 +447,33 @@ def ParsePE(c, peid, file):
 					)
 				)
 	except:
-		eprint( "Failed DIRECTORY_ENTRY_IMPORT")
+		eprint( sqlc, peid,  "Failed DIRECTORY_ENTRY_IMPORT")
 	
 	try:
-		c.execute('INSERT INTO DIRECTORY_ENTRY_IMPORT_HASH (peid,hash) VALUES (?,?)',
+		sqlc.execute('INSERT INTO DIRECTORY_ENTRY_IMPORT_HASH (peid,hash) VALUES (?,?)',
 			(
 				peid,
 				pe.get_imphash().encode('hex')
 			)
 		)
 	except:
-		eprint( "Failed DIRECTORY_ENTRY_IMPORT_HASH")
+		eprint( sqlc, peid,  "Failed DIRECTORY_ENTRY_IMPORT_HASH")
 	
 	try:
-		c.execute('INSERT INTO IMAGE_DOS_HEADER_RAW (peid,buf) VALUES (?,?)',
+		sqlc.execute('INSERT INTO IMAGE_DOS_HEADER_RAW (peid,buf) VALUES (?,?)',
 			(
 				peid,
 				pe.header.encode('hex')
 			)
 		)
 	except:
-		eprint( "Failed IMAGE_DOS_HEADER_RAW")
+		eprint( sqlc, peid,  "Failed IMAGE_DOS_HEADER_RAW")
 	
 	try:
 		if hasattr(pe, 'OPTIONAL_HEADER'):
 			if pe.OPTIONAL_HEADER.DATA_DIRECTORY[0].Size != 0:
 				for func in pe.DIRECTORY_ENTRY_EXPORT.symbols:
-					c.execute('INSERT INTO DIRECTORY_ENTRY_EXPORT (peid,name,addr) VALUES (?,?,?)',
+					sqlc.execute('INSERT INTO DIRECTORY_ENTRY_EXPORT (peid,name,addr) VALUES (?,?,?)',
 						(
 							peid,
 							func.name,
@@ -469,36 +481,36 @@ def ParsePE(c, peid, file):
 						)
 					)
 	except:
-		eprint( "Failed OPTIONAL_HEADER.DATA_DIRECTORY")
+		eprint( sqlc, peid,  "Failed OPTIONAL_HEADER.DATA_DIRECTORY")
 	
 	try:
 		for st in pe.get_resources_strings():
 			try:
-				c.execute("INSERT INTO resource_strings (peid,string) VALUES (?,?)",(peid,st))
+				sqlc.execute("INSERT INTO resource_strings (peid,string) VALUES (?,?)",(peid,st))
 			except:
 				continue
 	except:
-		eprint( "Failed resource_strings")
+		eprint( sqlc, peid,  "Failed resource_strings")
 	
 	try:
 		if hasattr(pe, 'FileInfo'):
 			for entry in pe.FileInfo:
 				if hasattr(entry, 'StringTable'):
 					for st_entry in entry.StringTable:
-						c.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid,"LangID", st_entry.LangID))
+						sqlc.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid,"LangID", st_entry.LangID))
 						for str_entry in st_entry.entries.items():
-							c.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, convert_to_printable(str_entry[0]), convert_to_printable(str_entry[1])))
+							sqlc.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, convert_to_printable(str_entry[0]), convert_to_printable(str_entry[1])))
 							
 		if pe.is_exe():
-			c.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, "FileType", "EXE"))
+			sqlc.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, "FileType", "EXE"))
 		elif pe.is_dll():
-			c.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, "FileType", "DLL"))
+			sqlc.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, "FileType", "DLL"))
 		elif pe.is_driver():
-			c.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, "FileType", "DRIVER"))
+			sqlc.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, "FileType", "DRIVER"))
 		else:
-			c.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, "FileType", "UNKNOWN"))
+			sqlc.execute("INSERT INTO FileInfo (peid,name,value) VALUES (?,?,?)",(peid, "FileType", "UNKNOWN"))
 	except:
-		eprint( "Failed FileInfo")
+		eprint( sqlc, peid,  "Failed FileInfo")
 	
 	try:
 		ep = pe.OPTIONAL_HEADER.AddressOfEntryPoint
@@ -513,15 +525,15 @@ def ParsePE(c, peid, file):
 				disassembly += pydasm.get_instruction_string(i, pydasm.FORMAT_INTEL, ep_ava+ofs) + '\n'
 				ofs = ofs + i.length
 		except:
-			eprint( "Problem completeing EP disassmebly")
+			eprint( sqlc, peid,  "Problem completeing EP disassmebly")
 		
 		m = hashlib.md5()
 		m.update(mmd)
 		ep_hash = m.digest().encode('hex')
 		
-		c.execute("INSERT INTO EP_DIS (peid,dis,hash) VALUES (?,?,?)",(peid,disassembly,ep_hash))
+		sqlc.execute("INSERT INTO EP_DIS (peid,dis,hash) VALUES (?,?,?)",(peid,disassembly,ep_hash))
 	except:
-		eprint( "Failed EP Disassembly")
+		eprint( sqlc, peid,  "Failed EP Disassembly")
 	
 	
 	# for rd in pe.DIRECTORY_ENTRY_RESOURCE.entries:
@@ -529,8 +541,6 @@ def ParsePE(c, peid, file):
 	
 	# print pe.generate_checksum()
 	
-			
-
 	pe.close()
 	
 	return 0
@@ -549,13 +559,13 @@ for root, subdirs, files in os.walk(walk_dir):
 		print fn
 		
 		conn = sqlite3.connect(sqldb)
-		c = conn.cursor()
+		sqlc = conn.cursor()
 		
 		md5 = hashlib.md5(open(fn, 'rb').read()).hexdigest()
-		CreateDB(c)
-		peid = InitBinary(c, fn, md5)
-		pe = ParsePE(c, peid, fn)
-		stringList = strings(peid,c, fn)
+		CreateDB(sqlc)
+		peid = InitBinary(sqlc, fn, md5)
+		pe = ParsePE(sqlc, peid, fn)
+		stringList = strings(peid,sqlc, fn)
 		
 		conn.commit()
 		conn.close()
