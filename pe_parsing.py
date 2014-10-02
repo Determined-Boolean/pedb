@@ -10,7 +10,7 @@ import sys
 def eprint( sqlc, peid, msg):
 	print "\t [!]%s" % msg
 	try:
-		sqlc.execute("INSERT INTO errors (peid, error) VALUES (?,?)"(peid,msg))
+		sqlc.execute("INSERT INTO errors (peid, error) VALUES (?,?)",(peid,msg))
 	except:
 		print "\t [!]FAILED INSERT INTO errors"
 
