@@ -266,7 +266,11 @@ def matchBytes():
 
 def ParsePE(sqlc, peid, file):
 	
-	pe = pefile.PE(file)
+	try:
+		pe = pefile.PE(file)
+	except:
+		eprint( sqlc, peid, "FAILED to parse PE file")
+		return None
 	
 	try:
 		sqlc.execute("INSERT into IMAGE_DOS_HEADER (peid,e_magic,e_cblp,e_cp,e_crlc,e_cparhdr,e_minalloc,e_maxalloc,e_ss,e_sp,e_csum,e_ip,e_cs,e_lfarlc,e_ovno,e_res,e_oemid,e_oeminfo,e_res2,e_lfanew) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
